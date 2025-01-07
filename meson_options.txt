@@ -46,7 +46,7 @@ option('download_hailo_models',
 
 option('enable_imx500',
         type : 'boolean',
-        value : false,
+        value : true,
         description : 'Enable IMX500 postprocessing support')
 
 option('download_imx500_models',
