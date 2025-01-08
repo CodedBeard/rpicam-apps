@@ -320,6 +320,10 @@ struct OptsInternal
 
 	std::string preview_libs;
 	std::string encoder_libs;
+
+	std::string object;
+	unsigned int gap;
+
 };
 
 struct Options

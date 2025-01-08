@@ -14,6 +14,7 @@
 #include "core/rpicam_encoder.hpp"
 #include "output/output.hpp"
 
+#include "post_processing_stages/object_detect.hpp"
 using namespace std::placeholders;
 
 // Some keypress/signal handling.
@@ -74,6 +75,7 @@ static void event_loop(RPiCamEncoder &app)
 	app.StartEncoder();
 	app.StartCamera();
 	auto start_time = std::chrono::high_resolution_clock::now();
+	unsigned int last_capture_frame = 0;
 
 	// Monitoring for keypresses and signals.
 	signal(SIGUSR1, default_signal_handler);
@@ -125,6 +127,28 @@ static void event_loop(RPiCamEncoder &app)
 			start_time = now;
 			count = 0; // reset the "frames encoded" counter too
 		}
+
+		std::vector<Detection> detections;
+		bool detected = completed_request->sequence - last_capture_frame >= options->gap &&
+						completed_request->post_process_metadata.Get("object_detect.results", detections) == 0 &&
+						std::find_if(detections.begin(), detections.end(), [options](const Detection &d) {
+							return d.name.find(options->object) != std::string::npos;
+						}) != detections.end();
+
+		if (detected)
+		{
+			last_capture_frame = completed_request->sequence;
+			LOG(1, "Detection");
+		}
+
+		// this converts the raw stream into the mjpeg encoded version
+		// so i guess at this point i should be able to access that from the output.get() 
+		// as that is what the callback references at the top.
+		// if so, i should be able to copy that frame for sending in the webhook
+		// that is assuming the frame contains a detection we care about
+		//
+		// I should probably work out if the detection is working first
+		app.EncodeBuffer(completed_request, app.VideoStream());
 		app.ShowPreview(completed_request, app.VideoStream());
 	}
 }

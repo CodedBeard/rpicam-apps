@@ -812,6 +812,8 @@ bool OptsInternal::ParseVideo()
 
 void OptsInternal::PrintVideo() const
 {
+	std::cerr << "    object: " << object << std::endl;
+	std::cerr << "    gap: " << gap << std::endl;
 	std::cerr << "    bitrate: " << bitrate.kbps() << "kbps" << std::endl;
 	std::cerr << "    profile: " << profile << std::endl;
 	std::cerr << "    level:  " << level << std::endl;

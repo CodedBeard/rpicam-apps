@@ -57,8 +57,8 @@ struct VideoOptions : public Options
 			("frames", value<unsigned int>(&v_->frames)->default_value(0),
 			 "Run for the exact number of frames specified. This will override any timeout set.")
 			("libav-video-codec", value<std::string>(&v_->libav_video_codec)->default_value("h264_v4l2m2m"),
-			 "Sets the libav video codec to use. "
-			 "To list available codecs, run  the \"ffmpeg -codecs\" command.")
+			("object", value<std::string>(&v_->object), "Name of object to detect")
+			("gap", value<unsigned int>(&v_->gap)->default_value(30), "Smallest gap between captures in frames")	
 			("libav-video-codec-opts", value<std::string>(&v_->libav_video_codec_opts),
 			 "Sets the libav video codec options to use. "
 			 "These override the internal defaults (check 'encoderOptions*()' in 'encoder/libav_encoder.cpp' for the defaults). "
