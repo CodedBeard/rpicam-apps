@@ -122,6 +122,8 @@ struct VideoOptions : public Options
 			 "Write output to a circular buffer of the given size (in MB) which is saved on exit")
 			("frames", value<unsigned int>(&frames)->default_value(0),
 			 "Run for the exact number of frames specified. This will override any timeout set.")
+			("object", value<std::string>(&object), "Name of object to detect")
+			("gap", value<unsigned int>(&gap)->default_value(30), "Smallest gap between captures in frames")	
 #if LIBAV_PRESENT
 			("libav-video-codec", value<std::string>(&libav_video_codec)->default_value("h264_v4l2m2m"),
 			 "Sets the libav video codec to use. "
@@ -165,6 +167,8 @@ struct VideoOptions : public Options
 		// clang-format on
 	}
 
+	std::string object;
+	unsigned int gap;
 	Bitrate bitrate;
 	std::string profile;
 	std::string level;
@@ -243,6 +247,8 @@ struct VideoOptions : public Options
 	virtual void Print() const override
 	{
 		Options::Print();
+		std::cerr << "    object: " << object << std::endl;
+		std::cerr << "    gap: " << gap << std::endl;
 		std::cerr << "    bitrate: " << bitrate.kbps() << "kbps" << std::endl;
 		std::cerr << "    profile: " << profile << std::endl;
 		std::cerr << "    level:  " << level << std::endl;
