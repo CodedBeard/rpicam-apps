@@ -35,6 +35,7 @@ endif
 
 dl_dep = dependency('dl', required : true)
 libcamera_dep = dependency('libcamera', required : true)
+dep_curl = dependency('libcurl', required: true)
 
 summary({
             'location' : libcamera_dep.get_variable('libdir'),
@@ -43,7 +44,7 @@ summary({
         section : 'libcamera')
 
 rpicam_app_src = []
-rpicam_app_dep = [libcamera_dep, dl_dep]
+rpicam_app_dep = [libcamera_dep, dl_dep, dep_curl]
 
 subdir('core')
 subdir('encoder')

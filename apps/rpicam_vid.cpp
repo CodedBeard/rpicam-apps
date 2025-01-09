@@ -5,6 +5,7 @@
  * rpicam_vid.cpp - libcamera video record app.
  */
 
+#include "libcamera/base/span.h"
 #include <chrono>
 #include <poll.h>
 #include <signal.h>
@@ -128,20 +129,16 @@ static void event_loop(RPiCamEncoder &app)
 							return d.name.find(options->object) != std::string::npos;
 						}) != detections.end();
 
+		app.EncodeBuffer(completed_request, app.VideoStream());
+		
 		if (detected)
 		{
 			last_capture_frame = completed_request->sequence;
-			LOG(1, "Detection");
+			LOG(1, options->object << " Detected!");
+			output->NotifyDetection(completed_request->sequence);
 		}
 
-		// this converts the raw stream into the mjpeg encoded version
-		// so i guess at this point i should be able to access that from the output.get() 
-		// as that is what the callback references at the top.
-		// if so, i should be able to copy that frame for sending in the webhook
-		// that is assuming the frame contains a detection we care about
-		//
-		// I should probably work out if the detection is working first
-		app.EncodeBuffer(completed_request, app.VideoStream());
+
 		app.ShowPreview(completed_request, app.VideoStream());
 	}
 }
