@@ -142,7 +142,7 @@ static void event_loop(RPiCamEncoder &app)
 		{
 			last_capture_frame = completed_request->sequence;
 			LOG(1, options->object << " Detected!");
-			output->NotifyDetection(completed_request->sequence);
+			output->NotifyDetection(completed_request->sequence);	
 		}
 
 
