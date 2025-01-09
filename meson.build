@@ -33,6 +33,7 @@ endif
 
 dl_dep = dependency('dl', required : true)
 libcamera_dep = dependency('libcamera', required : true)
+dep_curl = dependency('libcurl', required: true)
 
 if get_option('disable_rpi_features') == true
     cpp_arguments += '-DDISABLE_RPI_FEATURES'
@@ -47,7 +48,7 @@ summary({
         section : 'libcamera')
 
 rpicam_app_src = []
-rpicam_app_dep = [libcamera_dep, dl_dep]
+rpicam_app_dep = [libcamera_dep, dl_dep, dep_curl]
 
 conf_data = configuration_data()
 
