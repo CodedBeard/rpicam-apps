@@ -56,6 +56,7 @@ private:
 	bool metadata_started_ = false;
 	std::queue<libcamera::ControlList> metadata_queue_;
 	int detection_sequence_ = -1;
+	std::string webhook_url;
 };
 
 void start_metadata_output(std::streambuf *buf, std::string fmt);

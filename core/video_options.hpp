@@ -124,6 +124,7 @@ struct VideoOptions : public Options
 			 "Run for the exact number of frames specified. This will override any timeout set.")
 			("object", value<std::string>(&object), "Name of object to detect")
 			("gap", value<unsigned int>(&gap)->default_value(30), "Smallest gap between captures in frames")	
+			("webhook-url", value<std::string>(&webhook_url), "webhook endpoint to call")
 #if LIBAV_PRESENT
 			("libav-video-codec", value<std::string>(&libav_video_codec)->default_value("h264_v4l2m2m"),
 			 "Sets the libav video codec to use. "
@@ -169,6 +170,7 @@ struct VideoOptions : public Options
 
 	std::string object;
 	unsigned int gap;
+	std::string webhook_url;
 	Bitrate bitrate;
 	std::string profile;
 	std::string level;
