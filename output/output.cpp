@@ -37,6 +37,10 @@ Output::Output(VideoOptions const *options)
 			start_metadata_output(buf_metadata_, options_->Get().metadata_format);
 		}
 	}
+	if (!options->webhook_url.empty())
+	{
+		webhook_url = options->webhook_url;
+	}
 
 	enable_ = !options->Get().pause;
 }
@@ -115,47 +119,47 @@ void Output::outputBuffer(void *mem, size_t size, int64_t timestamp_us, uint32_t
 
 void Output::SendWebhook(void *mem, size_t size, int64_t timestamp_us)
 {
-	// temp hardcode test url
-	const std::string url = "http://192.168.3.9:8080/alerts/pi5-01";
+	if (webhook_url.empty())
+		return;
 	// Initialize a CURL handle
-    CURL *curl = curl_easy_init();
+	CURL *curl = curl_easy_init();
 
 	if (!curl)
-    {
+	{
 		LOG_ERROR("Failed to init curl");
-    }
+	}
 
 	// Set the URL
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	curl_easy_setopt(curl, CURLOPT_URL, webhook_url.c_str());
 
-    // We’re doing an HTTP POST
-    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+	// We’re doing an HTTP POST
+	curl_easy_setopt(curl, CURLOPT_POST, 1L);
 
-    // Pass the POST data
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, mem);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(size));
+	// Pass the POST data
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, mem);
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(size));
 
-    // Example: you could add a custom header to pass the timestamp
-    struct curl_slist *headers = nullptr;
-    std::string hdr = "X-Frame-Timestamp: " + std::to_string(timestamp_us);
-    headers = curl_slist_append(headers, hdr.c_str());
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+	// Example: you could add a custom header to pass the timestamp
+	struct curl_slist *headers = nullptr;
+	std::string hdr = "X-Frame-Timestamp: " + std::to_string(timestamp_us);
+	headers = curl_slist_append(headers, hdr.c_str());
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    // Perform the request
-    CURLcode res = curl_easy_perform(curl);
-    bool success = (res == CURLE_OK);
+	// Perform the request
+	CURLcode res = curl_easy_perform(curl);
+	bool success = (res == CURLE_OK);
 	LOG(1, "Call result: " << success);
-    if (!success)
-    {
+	if (!success)
+	{
 		LOG_ERROR("Failed to call endpoint:" << curl_easy_strerror(res));
         //std::cerr << "[Output] curl_easy_perform() failed: "
           //        << curl_easy_strerror(res) << std::endl;
-    }
+	}
 
-    // Cleanup
-    if (headers)
-        curl_slist_free_all(headers);
-    curl_easy_cleanup(curl);
+	// Cleanup
+	if (headers)
+		curl_slist_free_all(headers);
+	curl_easy_cleanup(curl);
 }
 
 Output *Output::Create(VideoOptions const *options)
