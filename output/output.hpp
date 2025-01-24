@@ -10,6 +10,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>    // for getenv
+#include <pwd.h>      // for getpwuid
+#include <unistd.h>   // for getuid
 
 #include <atomic>
 
@@ -46,7 +49,6 @@ protected:
 	std::unique_ptr<Output> mjpeg_output;
 	int64_t record_end_timestamp;
 	int64_t record_start_timestamp;
-
 
 private:
 	enum State
