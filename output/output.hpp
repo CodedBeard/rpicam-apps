@@ -14,6 +14,7 @@
 #include <atomic>
 
 #include "core/video_options.hpp"
+#include <memory>
 
 class Output
 {
@@ -39,6 +40,13 @@ protected:
 	virtual void timestampReady(int64_t timestamp);
 	VideoOptions const *options_;
 	FILE *fp_timestamps_;
+	void startMjpegRecording(int64_t first_detection_timestamp);
+	void stopMjpegRecording();
+	bool isMjpegRecording() const { return mjpeg_output != nullptr; }
+	std::unique_ptr<Output> mjpeg_output;
+	int64_t record_end_timestamp;
+	int64_t record_start_timestamp;
+
 
 private:
 	enum State

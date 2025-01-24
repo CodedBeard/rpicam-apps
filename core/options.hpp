@@ -323,6 +323,9 @@ struct OptsInternal
 
 	std::string object;
 	unsigned int gap;
+	std::string webhook_url;
+	unsigned int detection_record_secs;
+	std::string detection_record_path;
 
 };
 

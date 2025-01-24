@@ -61,7 +61,7 @@ struct VideoOptions : public Options
 			("gap", value<unsigned int>(&v_->gap)->default_value(30), "Smallest gap between captures in frames")	
 			("webhook-url", value<std::string>(&webhook_url), "webhook endpoint to call")
 			("detection_record_secs", value<unsigned int>(&detection_record_secs)->default_value(30), "number of seconds of frames to record when a detection is made")	
-			("libav-video-codec-opts", value<std::string>(&v_->libav_video_codec_opts),
+			("detection_record_path", value<std::string>(&detection_record_path)->default_value("~"), "the path to save the recording to")	
 			 "Sets the libav video codec options to use. "
 			 "These override the internal defaults (check 'encoderOptions*()' in 'encoder/libav_encoder.cpp' for the defaults). "
 			 "Separate key and value with \"=\" and multiple options with \";\". "
@@ -102,7 +102,6 @@ struct VideoOptions : public Options
 		;
 		// clang-format on
 	}
-
 
 	virtual bool Parse(int argc, char *argv[]) override
 	{
