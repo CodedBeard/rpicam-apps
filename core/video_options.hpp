@@ -126,6 +126,7 @@ struct VideoOptions : public Options
 			("gap", value<unsigned int>(&gap)->default_value(30), "Smallest gap between captures in frames")	
 			("webhook-url", value<std::string>(&webhook_url), "webhook endpoint to call")	
 			("detection_record_secs", value<unsigned int>(&detection_record_secs)->default_value(30), "number of seconds of frames to record when a detection is made")	
+			("detection_record_path", value<std::string>(&detection_record_path)->default_value("~"), "the path to save the recording to")	
 #if LIBAV_PRESENT
 			("libav-video-codec", value<std::string>(&libav_video_codec)->default_value("h264_v4l2m2m"),
 			 "Sets the libav video codec to use. "
@@ -169,6 +170,7 @@ struct VideoOptions : public Options
 		// clang-format on
 	}
 
+	std::string detection_record_path;
 	unsigned int detection_record_secs;
 	std::string object;
 	unsigned int gap;

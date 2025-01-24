@@ -61,6 +61,28 @@ void Output::Signal()
 void Output::NotifyDetection(int sequence_id)
 {
 	detection_sequence_ = sequence_id;
+
+	// We'll use last_timestamp_ as "current time" in microseconds,
+	// but if you prefer real-time, you'll need to fetch it differently.
+	int64_t now_us = last_timestamp_;
+
+	if (!isMjpegRecording())
+	{
+	// Start a new MJPEG recording
+		LOG(1, "Starting MJPEG recording due to detection.");
+		record_start_timestamp = now_us;
+		record_end_timestamp = now_us + static_cast<int64_t>(options_->detection_record_secs * 1'000'000);
+		startMjpegRecording(now_us);
+	}
+	else
+	{
+		// We are already recording, so just extend our end time
+		if (now_us + static_cast<int64_t>(options_->detection_record_secs * 1'000'000) > record_end_timestamp)
+		{
+		    LOG(1, "Extending MJPEG recording due to new detection.");
+		    record_end_timestamp = now_us + static_cast<int64_t>(options_->detection_record_secs * 1'000'000);
+		}
+	}
 }
 
 void Output::OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyframe)
@@ -102,6 +124,21 @@ void Output::OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyf
 		LOG(1, "Attempt to call webhook");
 		SendWebhook(mem, size, timestamp_us);
 		detection_sequence_ = -1;
+	}
+
+	    // --- MJPEG RECORDING LOGIC STARTS HERE ---
+	if (isMjpegRecording())
+	{
+		// Feed the raw buffer to the MJPEG file output
+		// This will effectively write the frames to the .mjpeg file
+		mjpeg_output->OutputReady(mem, size, last_timestamp_, keyframe);
+
+		// Check if we've gone past our record_end_timestamp_us_
+		if (last_timestamp_ > record_end_timestamp)
+		{
+			LOG(1, "MJPEG recording window has ended.");
+			stopMjpegRecording();
+		}
 	}
 }
 
@@ -225,3 +262,38 @@ void stop_metadata_output(std::streambuf *buf, std::string fmt)
 	if (fmt == "json")
 		out << std::endl << "]" << std::endl;
 }
+
+void Output::startMjpegRecording(int64_t first_detection_timestamp)
+{
+    // We'll clone the existing VideoOptions but tweak them for MJPEG.
+    // You might want to handle other fields, e.g. resolution, etc.
+    VideoOptions mjpeg_opts = *options_;
+    mjpeg_opts.codec = "mjpeg";
+
+       // Build a filename using the configured path (defaults to "~")
+    std::string path = mjpeg_opts.detection_record_path;
+    if (path.empty())
+        path = "~"; // Safety fallback if someone sets it to empty
+
+    // Example: "~/<timestamp>.mjpeg"
+    // (If you want to expand '~' to the actual home directory,
+    // you'd need extra logic here. For now, it's literally "~".)
+    std::string filename = path + "/" + std::to_string(first_detection_timestamp) + ".mjpeg";
+
+    mjpeg_opts.output = filename;
+    mjpeg_output.reset(Output::Create(&mjpeg_opts));
+
+    LOG(1, "Created MJPEG FileOutput: " << filename);
+}
+
+void Output::stopMjpegRecording()
+{
+    if (!isMjpegRecording())
+        return;
+
+    LOG(1, "Stopping MJPEG recording: " << record_start_timestamp);
+
+    // Deleting or resetting the pointer will close the file in FileOutput’s destructor.
+    mjpeg_output.reset();
+}
+
