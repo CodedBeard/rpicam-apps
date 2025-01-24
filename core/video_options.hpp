@@ -60,6 +60,7 @@ struct VideoOptions : public Options
 			("object", value<std::string>(&v_->object), "Name of object to detect")
 			("gap", value<unsigned int>(&v_->gap)->default_value(30), "Smallest gap between captures in frames")	
 			("webhook-url", value<std::string>(&webhook_url), "webhook endpoint to call")
+			("detection_record_secs", value<unsigned int>(&detection_record_secs)->default_value(30), "number of seconds of frames to record when a detection is made")	
 			("libav-video-codec-opts", value<std::string>(&v_->libav_video_codec_opts),
 			 "Sets the libav video codec options to use. "
 			 "These override the internal defaults (check 'encoderOptions*()' in 'encoder/libav_encoder.cpp' for the defaults). "
@@ -102,42 +103,7 @@ struct VideoOptions : public Options
 		// clang-format on
 	}
 
-<<<<<<< HEAD
-=======
-	std::string object;
-	unsigned int gap;
-	std::string webhook_url;
-	Bitrate bitrate;
-	std::string profile;
-	std::string level;
-	unsigned int intra;
-	bool inline_headers;
-	std::string codec;
-	std::string libav_video_codec;
-	std::string libav_video_codec_opts;
-	std::string libav_format;
-	bool libav_audio;
-	std::string audio_codec;
-	std::string audio_device;
-	std::string audio_source;
-	uint32_t audio_channels;
-	Bitrate audio_bitrate;
-	uint32_t audio_samplerate;
-	TimeVal<std::chrono::microseconds> av_sync;
-	std::string save_pts;
-	int quality;
-	bool listen;
-	bool keypress;
-	bool signal;
-	std::string initial;
-	bool pause;
-	bool split;
-	uint32_t segment;
-	size_t circular;
-	uint32_t frames;
-	bool low_latency;
 
->>>>>>> e9d4ae2 (remove webhook url hardcoding)
 	virtual bool Parse(int argc, char *argv[]) override
 	{
 		if (Options::Parse(argc, argv) == false)
