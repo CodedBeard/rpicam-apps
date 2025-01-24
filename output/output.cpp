@@ -9,6 +9,12 @@
 #include <cinttypes>
 #include <stdexcept>
 #include <curl/curl.h>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
+#include <cstdlib>    // for getenv
+#include <pwd.h>      // for getpwuid
+#include <unistd.h>   // for getuid
 
 #include "circular_output.hpp"
 #include "file_output.hpp"
@@ -264,6 +270,55 @@ void stop_metadata_output(std::streambuf *buf, std::string fmt)
 		out << std::endl << "]" << std::endl;
 }
 
+static std::string expandTilde(const std::string &path)
+{
+    // If the path doesn’t start with '~', just return as-is:
+    if (path.empty() || path[0] != '~')
+        return path;
+
+    // Attempt to read the $HOME environment variable
+    const char *homeDir = std::getenv("HOME");
+    if (!homeDir)
+    {
+        // If $HOME is not set, fall back to the passwd database
+        struct passwd *pw = getpwuid(getuid());
+        if (pw)
+            homeDir = pw->pw_dir; 
+    }
+
+    // If homeDir is still null for any reason, just return path as-is.
+    if (!homeDir)
+        return path;
+
+    // Replace just the leading '~' with homeDir
+    // e.g. "~" => "/home/username", or "~/sub/dir" => "/home/username/sub/dir"
+    return std::string(homeDir) + path.substr(1);
+}
+
+static std::string generateIsoTimestamp()
+{
+    using namespace std::chrono;
+
+    // Get current system clock time
+    system_clock::time_point now = system_clock::now();
+
+    // Convert to time_t for localtime
+    std::time_t t = system_clock::to_time_t(now);
+    std::tm tmLocal = *std::localtime(&t);
+
+    // Extract fractional milliseconds
+    auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+
+    // Build the formatted string
+    // e.g. 2025-01-24-23-04-01-123
+    std::ostringstream oss;
+    oss << std::put_time(&tmLocal, "%Y-%m-%d-%H-%M-%S-")
+        << std::setw(3) << std::setfill('0') << ms.count();
+
+    return oss.str();
+}
+
+
 void Output::startMjpegRecording(int64_t first_detection_timestamp)
 {
     // We'll clone the existing VideoOptions but tweak them for MJPEG.
@@ -272,19 +327,22 @@ void Output::startMjpegRecording(int64_t first_detection_timestamp)
     mjpeg_opts.codec = "mjpeg";
 
        // Build a filename using the configured path (defaults to "~")
-    std::string path = mjpeg_opts.detection_record_path;
-    if (path.empty())
-        path = "~"; // Safety fallback if someone sets it to empty
+// Expand the user-configured path. If it starts with '~', we resolve it.
+    std::string basePath = expandTilde(mjpeg_opts.detection_record_path);
+    if (basePath.empty())
+        basePath = "."; // fallback if something unexpected happens
 
-    // Example: "~/<timestamp>.mjpeg"
-    // (If you want to expand '~' to the actual home directory,
-    // you'd need extra logic here. For now, it's literally "~".)
-    std::string filename = path + "/" + std::to_string(first_detection_timestamp) + ".mjpeg";
+    // Generate an ISO-like filename, e.g. 2025-01-24-23-04-01-123.mjpeg
+    std::string isoName = generateIsoTimestamp() + ".mjpeg";
 
-    mjpeg_opts.output = filename;
+    // Combine them: "basePath/isoName"
+    std::string fullFilename = basePath + "/" + isoName;
+
+    // Use that new path/filename in the secondary FileOutput
+    mjpeg_opts.output = fullFilename;
     mjpeg_output.reset(Output::Create(&mjpeg_opts));
 
-    LOG(1, "Created MJPEG FileOutput: " << filename);
+    LOG(1, "Started MJPEG file output at: " << fullFilename);
 }
 
 void Output::stopMjpegRecording()
@@ -297,4 +355,5 @@ void Output::stopMjpegRecording()
     // Deleting or resetting the pointer will close the file in FileOutput’s destructor.
     mjpeg_output.reset();
 }
+
 
