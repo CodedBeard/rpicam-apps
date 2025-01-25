@@ -56,12 +56,12 @@ struct VideoOptions : public Options
 			 "Write output to a circular buffer of the given size (in MB) which is saved on exit")
 			("frames", value<unsigned int>(&v_->frames)->default_value(0),
 			 "Run for the exact number of frames specified. This will override any timeout set.")
-			("libav-video-codec", value<std::string>(&v_->libav_video_codec)->default_value("h264_v4l2m2m"),
 			("object", value<std::string>(&v_->object), "Name of object to detect")
 			("gap", value<unsigned int>(&v_->gap)->default_value(30), "Smallest gap between captures in frames")	
 			("webhook-url", value<std::string>(&webhook_url), "webhook endpoint to call")
 			("detection_record_secs", value<unsigned int>(&detection_record_secs)->default_value(30), "number of seconds of frames to record when a detection is made")	
 			("detection_record_path", value<std::string>(&detection_record_path)->default_value("~"), "the path to save the recording to")	
+			("libav-video-codec", value<std::string>(&v_->libav_video_codec)->default_value("h264_v4l2m2m"),
 			 "Sets the libav video codec options to use. "
 			 "These override the internal defaults (check 'encoderOptions*()' in 'encoder/libav_encoder.cpp' for the defaults). "
 			 "Separate key and value with \"=\" and multiple options with \";\". "
