@@ -6,6 +6,7 @@
  */
 
 #include "file_output.hpp"
+#include "core/options.hpp"
 
 FileOutput::FileOutput(VideoOptions const *options)
 	: Output(options), fp_(nullptr), count_(0), file_start_time_ms_(0)
