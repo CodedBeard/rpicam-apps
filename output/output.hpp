@@ -67,6 +67,7 @@ private:
 	std::queue<libcamera::ControlList> metadata_queue_;
 	int detection_sequence_ = -1;
 	std::string webhook_url;
+	std::unique_ptr<VideoOptions> mjpeg_opts_;
 };
 
 void start_metadata_output(std::streambuf *buf, std::string fmt);

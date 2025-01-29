@@ -7,6 +7,7 @@
 
 #include "core/options.hpp"
 #include <cinttypes>
+#include <memory>
 #include <stdexcept>
 #include <curl/curl.h>
 #include <chrono>
@@ -14,6 +15,7 @@
 #include <sstream>
 #include <cstdlib>    // for getenv
 #include <pwd.h>      // for getpwuid
+#include <sys/stat.h>
 #include <unistd.h>   // for getuid
 
 #include "circular_output.hpp"
@@ -137,6 +139,7 @@ void Output::OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyf
 	{
 		// Feed the raw buffer to the MJPEG file output
 		// This will effectively write the frames to the .mjpeg file
+		
 		mjpeg_output->OutputReady(mem, size, last_timestamp_, keyframe);
 
 		// Check if we've gone past our record_end_timestamp_us_
@@ -217,6 +220,11 @@ Output *Output::Create(VideoOptions const *options)
 		return new CircularOutput(options);
 	else if (!out_file.empty())
 		return new FileOutput(options);
+	else if (!options->output.empty())
+	{
+		LOG(1, "FileOutput created");
+		return new FileOutput(options);
+	}
 	else
 		return new Output(options);
 }
@@ -318,31 +326,72 @@ static std::string generateIsoTimestamp()
     return oss.str();
 }
 
+static std::string generateDateString()
+{
+    using namespace std::chrono;
+    system_clock::time_point now = system_clock::now();
+    std::time_t t = system_clock::to_time_t(now);
+    std::tm tmLocal = *std::localtime(&t);
+
+    // Format: yyyy-MM-dd
+    std::ostringstream oss;
+    oss << std::put_time(&tmLocal, "%Y-%m-%d");
+    return oss.str();
+}
+
+static void createDirectoryIfNeeded(const std::string &path)
+{
+    struct stat st;
+    if (stat(path.c_str(), &st) == 0)
+    {
+        // If stat succeeded, check if it's already a directory
+        if (S_ISDIR(st.st_mode))
+            return; // Directory already exists
+        // If it exists but not a directory, handle error or rename
+    }
+
+    // Directory doesn’t exist, so create it
+    if (mkdir(path.c_str(), 0755) != 0)
+    {
+        // mkdir failed
+        LOG_ERROR("Failed to create directory: " << path << ", error: " << strerror(errno));
+    }
+}
 
 void Output::startMjpegRecording(int64_t first_detection_timestamp)
 {
     // We'll clone the existing VideoOptions but tweak them for MJPEG.
     // You might want to handle other fields, e.g. resolution, etc.
-    VideoOptions mjpeg_opts = *options_;
-    mjpeg_opts.codec = "mjpeg";
+    //VideoOptions mjpeg_opts = *options_;
+	if (mjpeg_opts_ == nullptr)
+		mjpeg_opts_ = std::make_unique<VideoOptions>(*options_);
+    mjpeg_opts_->codec = "mjpeg";
 
-       // Build a filename using the configured path (defaults to "~")
-// Expand the user-configured path. If it starts with '~', we resolve it.
-    std::string basePath = expandTilde(mjpeg_opts.detection_record_path);
+    // Build a filename using the configured path (defaults to "~")
+	// Expand the user-configured path. If it starts with '~', we resolve it.
+    std::string basePath = expandTilde(mjpeg_opts_->detection_record_path);
     if (basePath.empty())
         basePath = "."; // fallback if something unexpected happens
+
+	// 2) Generate YYYY-MM-DD
+    std::string dateFolder = generateDateString();
+
+    // 3) Create subfolder if it doesn’t exist
+    std::string subFolderPath = basePath + "/" + dateFolder;
+    createDirectoryIfNeeded(subFolderPath);
+
 
     // Generate an ISO-like filename, e.g. 2025-01-24-23-04-01-123.mjpeg
     std::string isoName = generateIsoTimestamp() + ".mjpeg";
 
     // Combine them: "basePath/isoName"
-    std::string fullFilename = basePath + "/" + isoName;
+    std::string fullFilename = subFolderPath + "/" + isoName;
 
     // Use that new path/filename in the secondary FileOutput
-    mjpeg_opts.output = fullFilename;
-    mjpeg_output.reset(Output::Create(&mjpeg_opts));
+    mjpeg_opts_->output = fullFilename;
+    mjpeg_output.reset(Output::Create(mjpeg_opts_.get()));
 
-    LOG(1, "Started MJPEG file output at: " << fullFilename);
+    LOG(1, "Started MJPEG file output at: " << mjpeg_opts_->output);
 }
 
 void Output::stopMjpegRecording()
@@ -350,10 +399,52 @@ void Output::stopMjpegRecording()
     if (!isMjpegRecording())
         return;
 
-    LOG(1, "Stopping MJPEG recording: " << record_start_timestamp);
+    LOG(1, "Stopping MJPEG recording, StartTime: " << record_start_timestamp << " EndTime: " << record_end_timestamp);
 
     // Deleting or resetting the pointer will close the file in FileOutput’s destructor.
     mjpeg_output.reset();
+
+    // Make a local copy of the raw filename, then clear our member.
+    // This ensures if we start a new recording soon, we won't overwrite it.
+    std::string rawFile = mjpeg_opts_->output;
+    mjpeg_opts_->output.clear();
+
+    // 2) Construct a final container filename
+    //    Example: replace ".mjpeg" with ".mp4" or ".avi"
+    std::string outFilename;
+    {
+        std::size_t pos = rawFile.rfind(".");
+        if (pos == std::string::npos)
+            outFilename = rawFile + ".mp4"; // fallback
+        else
+            outFilename = rawFile.substr(0, pos) + ".mp4";
+    }
+
+    // 3) Build the ffmpeg command. For MJPEG->MP4, something like:
+    //    ffmpeg -y -f mjpeg -i "raw.mjpeg" -c copy "output.mp4"
+    //    If you prefer an AVI container (often better for MJPEG):
+    //    ffmpeg -y -f mjpeg -i "raw.mjpeg" -c copy "output.avi"
+    //
+    std::string cmd = "ffmpeg -y -f mjpeg -i \"" + rawFile + "\" -c copy \"" + outFilename + "\"";
+
+    // 4) Launch a background thread to run ffmpeg and remove the raw file if successful
+    std::thread([cmd, rawFile, outFilename]() {
+        LOG(1, "Running ffmpeg in a background thread to wrap raw MJPEG: " << cmd);
+        int ret = std::system(cmd.c_str());
+
+        if (ret == 0)
+        {
+            // On success, remove the original raw .mjpeg
+            LOG(1, "Successfully created " << outFilename << ", removing raw file " << rawFile);
+            std::remove(rawFile.c_str());
+        }
+        else
+        {
+            // On failure, keep the raw file so you don't lose data
+            LOG_ERROR("ffmpeg command failed with code " << ret 
+                      << ", raw MJPEG file retained at " << rawFile);
+        }
+    }).detach(); // Detach the thread (no blocking, main thread continues)
 }
 
 
