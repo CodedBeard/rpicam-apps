@@ -166,7 +166,10 @@ void Output::outputBuffer(void *mem, size_t size, int64_t timestamp_us, uint32_t
 void Output::SendWebhook(void *mem, size_t size, int64_t timestamp_us)
 {
 	if (webhook_url.empty())
+	{
+		LOG_ERROR("webhook url is empty");
 		return;
+	}
 	// Initialize a CURL handle
 	CURL *curl = curl_easy_init();
 
@@ -192,6 +195,7 @@ void Output::SendWebhook(void *mem, size_t size, int64_t timestamp_us)
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
 	// Perform the request
+	LOG(1, "Calling webhook: " << webhook_url.c_str());
 	CURLcode res = curl_easy_perform(curl);
 	bool success = (res == CURLE_OK);
 	LOG(1, "Call result: " << success);
