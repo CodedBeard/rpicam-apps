@@ -81,6 +81,7 @@ void Output::NotifyDetection(int sequence_id)
 		record_start_timestamp = now_us;
 		record_end_timestamp = now_us + static_cast<int64_t>(options_->detection_record_secs * 1'000'000);
 		startMjpegRecording(now_us);
+		first_frame = true;
 	}
 	else
 	{
@@ -142,6 +143,14 @@ void Output::OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyf
 		
 		mjpeg_output->OutputReady(mem, size, last_timestamp_, keyframe);
 
+		if (first_frame) {
+			// write this frame to jpg as a thumbnail
+			// clone the file output, change the filename to end in .jpg
+			// write this frame and then close the file
+			outputJpg(mem, size, timestamp_us, keyframe);
+			first_frame = false;
+		}
+
 		// Check if we've gone past our record_end_timestamp_us_
 		if (last_timestamp_ > record_end_timestamp)
 		{
@@ -202,8 +211,6 @@ void Output::SendWebhook(void *mem, size_t size, int64_t timestamp_us)
 	if (!success)
 	{
 		LOG_ERROR("Failed to call endpoint:" << curl_easy_strerror(res));
-        //std::cerr << "[Output] curl_easy_perform() failed: "
-          //        << curl_easy_strerror(res) << std::endl;
 	}
 
 	// Cleanup
@@ -395,6 +402,26 @@ void Output::startMjpegRecording(int64_t first_detection_timestamp)
     LOG(1, "Started MJPEG file output at: " << mjpeg_opts_->output);
 }
 
+
+void Output::outputJpg(void *mem, size_t size, int64_t timestamp_us, bool keyframe)
+{
+	// TODO should this be running on a seperate thread to prevent slowing down the stream?
+	std::unique_ptr<VideoOptions> jpeg_opts_ = std::make_unique<VideoOptions>(*mjpeg_opts_);
+	std::string newExtension = ".jpg";
+	    // Find the last occurrence of '.'
+    size_t dotPos = jpeg_opts_->output.find_last_of('.');
+
+    if (dotPos != std::string::npos) {
+        // Replace the extension: keep everything before the dot and append the new extension
+        jpeg_opts_->output = jpeg_opts_->output.substr(0, dotPos) + newExtension;
+    }
+	
+	LOG(1, "Creating thumbnail:" << jpeg_opts_->output);
+    jpeg_output.reset(Output::Create(jpeg_opts_.get()));
+	jpeg_output->OutputReady(mem, size, timestamp_us, keyframe);
+	jpeg_output.reset();
+}
+
 void Output::stopMjpegRecording()
 {
     if (!isMjpegRecording())
@@ -426,11 +453,12 @@ void Output::stopMjpegRecording()
     //    If you prefer an AVI container (often better for MJPEG):
     //    ffmpeg -y -f mjpeg -i "raw.mjpeg" -c copy "output.avi"
     //
-    std::string cmd = "ffmpeg -y -f mjpeg -i \"" + rawFile + "\" -c copy \"" + outFilename + "\"";
+	std::string cmd = "ffmpeg -i \"" + rawFile + "\" -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p -c:a copy \"" + outFilename +"\"";
+
 
     // 4) Launch a background thread to run ffmpeg and remove the raw file if successful
     std::thread([cmd, rawFile, outFilename]() {
-        LOG(1, "Running ffmpeg in a background thread to wrap raw MJPEG: " << cmd);
+        LOG(1, "Running ffmpeg in a background thread to raw MJPEG to mp4: " << cmd);
         int ret = std::system(cmd.c_str());
 
         if (ret == 0)
