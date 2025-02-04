@@ -46,7 +46,9 @@ protected:
 	void startMjpegRecording(int64_t first_detection_timestamp);
 	void stopMjpegRecording();
 	bool isMjpegRecording() const { return mjpeg_output != nullptr; }
+	void outputJpg(void *mem, size_t size, int64_t timestamp_us, bool keyframe);
 	std::unique_ptr<Output> mjpeg_output;
+	std::unique_ptr<Output> jpeg_output;
 	int64_t record_end_timestamp;
 	int64_t record_start_timestamp;
 
@@ -68,6 +70,7 @@ private:
 	int detection_sequence_ = -1;
 	std::string webhook_url;
 	std::unique_ptr<VideoOptions> mjpeg_opts_;
+	bool first_frame = false;
 };
 
 void start_metadata_output(std::streambuf *buf, std::string fmt);
