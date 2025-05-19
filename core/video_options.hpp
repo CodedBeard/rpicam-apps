@@ -124,6 +124,7 @@ struct VideoOptions : public Options
 			 "Run for the exact number of frames specified. This will override any timeout set.")
 			("object", value<std::string>(&object), "Name of object to detect")
 			("gap", value<unsigned int>(&gap)->default_value(30), "Smallest gap between captures in frames")	
+			("confidence", value<float>(&confidence)->default_value(0.65), "Confidence in detection matches object")	
 			("webhook-url", value<std::string>(&webhook_url), "webhook endpoint to call")	
 			("detection-record-secs", value<unsigned int>(&detection_record_secs)->default_value(30), "number of seconds of frames to record when a detection is made")	
 			("detection-record-path", value<std::string>(&detection_record_path)->default_value("~"), "the path to save the recording to")	
@@ -174,6 +175,7 @@ struct VideoOptions : public Options
 	unsigned int detection_record_secs;
 	std::string object;
 	unsigned int gap;
+	float confidence;
 	std::string webhook_url;
 	Bitrate bitrate;
 	std::string profile;
@@ -255,6 +257,7 @@ struct VideoOptions : public Options
 		Options::Print();
 		std::cerr << "    object: " << object << std::endl;
 		std::cerr << "    gap: " << gap << std::endl;
+		std::cerr << "    confidence: " << confidence << std::endl;
 		std::cerr << "    detection-record-secs: " << detection_record_secs << std::endl;
 		std::cerr << "    detection-record-path: " << detection_record_path << std::endl;
 		std::cerr << "    bitrate: " << bitrate.kbps() << "kbps" << std::endl;
