@@ -58,16 +58,18 @@ struct VideoOptions : public Options
 			 "Run for the exact number of frames specified. This will override any timeout set.")
 			("object", value<std::string>(&v_->object), "Name of object to detect")
 			("gap", value<unsigned int>(&v_->gap)->default_value(30), "Smallest gap between captures in frames")	
-			("webhook-url", value<std::string>(&webhook_url), "webhook endpoint to call")
-			("detection_record_secs", value<unsigned int>(&detection_record_secs)->default_value(30), "number of seconds of frames to record when a detection is made")	
-			("detection_record_path", value<std::string>(&detection_record_path)->default_value("~"), "the path to save the recording to")	
+			("webhook-url", value<std::string>(&v_->webhook_url), "webhook endpoint to call")
+			("confidence", value<float>(&v_->confidence)->default_value(0.65), "Confidence in detection matches object")	
+			("detection_record_secs", value<unsigned int>(&v_->detection_record_secs)->default_value(30), "number of seconds of frames to record when a detection is made")	
 			("libav-video-codec", value<std::string>(&v_->libav_video_codec)->default_value("h264_v4l2m2m"),
+			 "Sets the libav video codec to use. "
+			 "To list available codecs, run  the \"ffmpeg -codecs\" command.")
+			("libav-video-codec-opts", value<std::string>(&v_->libav_video_codec_opts),
 			 "Sets the libav video codec options to use. "
 			 "These override the internal defaults (check 'encoderOptions*()' in 'encoder/libav_encoder.cpp' for the defaults). "
 			 "Separate key and value with \"=\" and multiple options with \";\". "
 			 "e.g.: \"preset=ultrafast;profile=high;partitions=i8x8,i4x4\". "
-			 "To list available options for a given codec, run the \"ffmpeg -h encoder=libx264\" command for libx264.")
-			("libav-format", value<std::string>(&v_->libav_format),
+			 "To list available options for a given codec, run the \"ffmpeg -h encoder=libx264\" command for libx264.")			("libav-format", value<std::string>(&v_->libav_format),
 			 "Sets the libav encoder output format to use. "
 			 "Leave blank to try and deduce this from the filename.\n"
 			 "To list available formats, run  the \"ffmpeg -formats\" command.")

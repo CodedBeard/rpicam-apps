@@ -133,7 +133,7 @@ static void event_loop(RPiCamEncoder &app)
 		bool detected = completed_request->sequence - last_capture_frame >= options->gap &&
 						completed_request->post_process_metadata.Get("object_detect.results", detections) == 0 &&
 						std::find_if(detections.begin(), detections.end(), [options](const Detection &d) {
-							return d.name.find(options->object) != std::string::npos;
+							return d.name.find(options->object) != std::string::npos && d.confidence >= options->confidence;
 						}) != detections.end();
 
 		app.EncodeBuffer(completed_request, app.VideoStream());

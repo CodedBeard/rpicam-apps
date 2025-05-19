@@ -326,6 +326,7 @@ struct OptsInternal
 	std::string webhook_url;
 	unsigned int detection_record_secs;
 	std::string detection_record_path;
+	float confidence;
 
 };
 

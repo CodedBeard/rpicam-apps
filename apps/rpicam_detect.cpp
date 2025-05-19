@@ -84,9 +84,15 @@ static void event_loop(RPiCamDetectApp &app)
 			std::vector<Detection> detections;
 			bool detected = completed_request->sequence - last_capture_frame >= options->gap &&
 							completed_request->post_process_metadata.Get("object_detect.results", detections) == 0 &&
+<<<<<<< HEAD
 							std::find_if(detections.begin(), detections.end(), [options](const Detection &d)
 										 { return d.name.find(options->object) != std::string::npos; }) !=
 								detections.end();
+=======
+							std::find_if(detections.begin(), detections.end(), [options](const Detection &d) { 
+								return d.name.find(options->object) != std::string::npos;
+							}) != detections.end();
+>>>>>>> dca16d4 (add confidence filter)
 
 			app.ShowPreview(completed_request, app.ViewfinderStream());
 
