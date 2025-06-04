@@ -7,6 +7,8 @@
 
 #include "core/options.hpp"
 #include <cinttypes>
+#include <cmath>
+#include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <curl/curl.h>
@@ -51,6 +53,10 @@ Output::Output(VideoOptions const *options)
 	}
 
 	enable_ = !options->Get().pause;
+	max_pre_frames = static_cast<size_t>(
+		std::ceil(options_->pre_detection_secs * options_->framerate.value())
+	);
+
 }
 
 Output::~Output()
@@ -81,6 +87,7 @@ void Output::NotifyDetection(int sequence_id)
 		record_start_timestamp = now_us;
 		record_end_timestamp = now_us + static_cast<int64_t>(options_->detection_record_secs * 1'000'000);
 		startMjpegRecording(now_us);
+		pending_flush_ = true;
 		first_frame = true;
 	}
 	else
@@ -96,6 +103,26 @@ void Output::NotifyDetection(int sequence_id)
 
 void Output::OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyframe)
 {
+	// if a detection just armed the recorder, flush the buffer
+	if (pending_flush_ && isMjpegRecording()) {
+		flush_pre_buffer_to_mjpeg(timestamp_us);
+		pending_flush_ = false;
+	}
+
+	if (max_pre_frames)
+	{
+		Frame f;
+		f.bytes.assign(static_cast<uint8_t *>(mem), static_cast<uint8_t *>(mem) + size);
+		f.ts = timestamp_us;
+		f.keyframe = keyframe;
+
+		pre_buffer_.push_back(std::move(f));
+		while (pre_buffer_.size() > max_pre_frames) {
+			pre_buffer_.pop_front();	
+		}
+	}
+
+
 	// When output is enabled, we may have to wait for the next keyframe.
 	uint32_t flags = keyframe ? FLAG_KEYFRAME : FLAG_NONE;
 	if (!enable_)
@@ -402,7 +429,31 @@ void Output::startMjpegRecording(int64_t first_detection_timestamp)
     mjpeg_opts_->output = fullFilename;
     mjpeg_output.reset(Output::Create(mjpeg_opts_.get()));
 
+	// flush the pre buffer to the mjpeg output
+	//flush_pre_buffer_to_mjpeg();
+
     LOG(1, "Started MJPEG file output at: " << mjpeg_opts_->output);
+}
+
+void Output::flush_pre_buffer_to_mjpeg(int64_t cutoff_ts)
+{
+	if(!isMjpegRecording() || pre_buffer_.empty())
+		return;
+
+	// for (auto &f : pre_buffer_) {
+	// 	mjpeg_output->OutputReady(f.bytes.data(), f.bytes.size(), f.ts - time_offset_, f.keyframe);
+	// }
+
+	for (auto it = pre_buffer_.begin(); it != pre_buffer_.end(); ++it) {
+		if (it->ts >= cutoff_ts) {
+			break;
+		}
+
+
+	 	mjpeg_output->OutputReady(it->bytes.data(), it->bytes.size(), it->ts - time_offset_, it->keyframe);
+	}
+
+	pre_buffer_.clear();
 }
 
 

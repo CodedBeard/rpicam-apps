@@ -58,6 +58,7 @@ struct VideoOptions : public Options
 			 "Run for the exact number of frames specified. This will override any timeout set.")
 			("object", value<std::string>(&v_->object), "Name of object to detect")
 			("gap", value<unsigned int>(&v_->gap)->default_value(30), "Smallest gap between captures in frames")	
+			("pre-detection-secs", value<unsigned int>(&v_->pre_detection_secs)->default_value(30), "seconds of recording to buffer from before a detection")	
 			("webhook-url", value<std::string>(&v_->webhook_url), "webhook endpoint to call")
 			("confidence", value<float>(&v_->confidence)->default_value(0.65), "Confidence in detection matches object")	
 			("detection_record_secs", value<unsigned int>(&v_->detection_record_secs)->default_value(30), "number of seconds of frames to record when a detection is made")	
@@ -105,6 +106,46 @@ struct VideoOptions : public Options
 		// clang-format on
 	}
 
+<<<<<<< HEAD
+=======
+	std::string detection_record_path;
+	unsigned int detection_record_secs;
+	std::string object;
+	unsigned int gap;
+	unsigned int pre_detection_secs;
+	float confidence;
+	std::string webhook_url;
+	Bitrate bitrate;
+	std::string profile;
+	std::string level;
+	unsigned int intra;
+	bool inline_headers;
+	std::string codec;
+	std::string libav_video_codec;
+	std::string libav_video_codec_opts;
+	std::string libav_format;
+	bool libav_audio;
+	std::string audio_codec;
+	std::string audio_device;
+	std::string audio_source;
+	uint32_t audio_channels;
+	Bitrate audio_bitrate;
+	uint32_t audio_samplerate;
+	TimeVal<std::chrono::microseconds> av_sync;
+	std::string save_pts;
+	int quality;
+	bool listen;
+	bool keypress;
+	bool signal;
+	std::string initial;
+	bool pause;
+	bool split;
+	uint32_t segment;
+	size_t circular;
+	uint32_t frames;
+	bool low_latency;
+
+>>>>>>> d16e8c2 (add pre buffer)
 	virtual bool Parse(int argc, char *argv[]) override
 	{
 		if (Options::Parse(argc, argv) == false)
@@ -116,6 +157,29 @@ struct VideoOptions : public Options
 	virtual void Print() const override
 	{
 		Options::Print();
+<<<<<<< HEAD
 		v_->PrintVideo();
+=======
+		std::cerr << "    object: " << object << std::endl;
+		std::cerr << "    gap: " << gap << std::endl;
+		std::cerr << "    confidence: " << confidence << std::endl;
+		std::cerr << "    pre-detection-secs: " << pre_detection_secs << std::endl;
+		std::cerr << "    detection-record-secs: " << detection_record_secs << std::endl;
+		std::cerr << "    detection-record-path: " << detection_record_path << std::endl;
+		std::cerr << "    bitrate: " << bitrate.kbps() << "kbps" << std::endl;
+		std::cerr << "    profile: " << profile << std::endl;
+		std::cerr << "    level:  " << level << std::endl;
+		std::cerr << "    intra: " << intra << std::endl;
+		std::cerr << "    inline: " << inline_headers << std::endl;
+		std::cerr << "    save-pts: " << save_pts << std::endl;
+		std::cerr << "    codec: " << codec << std::endl;
+		std::cerr << "    quality (for MJPEG): " << quality << std::endl;
+		std::cerr << "    keypress: " << keypress << std::endl;
+		std::cerr << "    signal: " << signal << std::endl;
+		std::cerr << "    initial: " << initial << std::endl;
+		std::cerr << "    split: " << split << std::endl;
+		std::cerr << "    segment: " << segment << std::endl;
+		std::cerr << "    circular: " << circular << std::endl;
+>>>>>>> d16e8c2 (add pre buffer)
 	}
 };
