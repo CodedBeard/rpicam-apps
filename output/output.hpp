@@ -13,6 +13,8 @@
 #include <cstdlib>    // for getenv
 #include <pwd.h>      // for getpwuid
 #include <unistd.h>   // for getuid
+#include <deque> // for buffering
+#include <vector> // for buffering
 
 #include <atomic>
 
@@ -31,6 +33,7 @@ public:
 	void MetadataReady(libcamera::ControlList &metadata);
 	void NotifyDetection(int sequence_id);
 	void SendWebhook(void *mem, size_t size, int64_t timestamp_us);
+
 
 protected:
 	enum Flag
@@ -71,6 +74,20 @@ private:
 	std::string webhook_url;
 	std::unique_ptr<VideoOptions> mjpeg_opts_;
 	bool first_frame = false;
+
+	struct Frame
+	{
+		std::vector<uint8_t> bytes;
+		int64_t ts;
+		bool keyframe;
+	};
+
+	// Rolling buffer that keeps the last N frames
+	std::deque<Frame> pre_buffer_;
+	size_t max_pre_frames = 0;
+	bool pending_flush_ = false;
+
+	void flush_pre_buffer_to_mjpeg(int64_t cutoff_ts);
 };
 
 void start_metadata_output(std::streambuf *buf, std::string fmt);
