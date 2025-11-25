@@ -398,18 +398,6 @@ static void createDirectoryIfNeeded(const std::string &path)
 
 void Output::startMjpegRecording(int64_t first_detection_timestamp)
 {
-    // We'll create a new VideoOptions for MJPEG recording.
-    // We can't copy VideoOptions because it has unique_ptrs, so we create fresh and set what we need.
-	if (mjpeg_opts_ == nullptr)
-	{
-		mjpeg_opts_ = std::make_unique<VideoOptions>();
-		// Copy the essential settings from the original options
-		mjpeg_opts_->Set().codec = "mjpeg";
-		mjpeg_opts_->Set().quality = options_->Get().quality;
-		mjpeg_opts_->Set().width = options_->Get().width;
-		mjpeg_opts_->Set().height = options_->Get().height;
-	}
-
     // Build a filename using the configured path (defaults to "~")
 	// Expand the user-configured path. If it starts with '~', we resolve it.
     std::string basePath = expandTilde(options_->Get().detection_record_path);
@@ -423,21 +411,28 @@ void Output::startMjpegRecording(int64_t first_detection_timestamp)
     std::string subFolderPath = basePath + "/" + dateFolder;
     createDirectoryIfNeeded(subFolderPath);
 
-
     // Generate an ISO-like filename, e.g. 2025-01-24-23-04-01-123.mjpeg
     std::string isoName = generateIsoTimestamp() + ".mjpeg";
 
     // Combine them: "basePath/isoName"
-    std::string fullFilename = subFolderPath + "/" + isoName;
+    mjpeg_output_filename_ = subFolderPath + "/" + isoName;
 
-    // Use that new path/filename in the secondary FileOutput
-    mjpeg_opts_->Set().output = fullFilename;
-    mjpeg_output.reset(Output::Create(mjpeg_opts_.get()));
+    // Save original options values
+    std::string original_output = options_->Get().output;
+    std::string original_codec = options_->Get().codec;
 
-	// flush the pre buffer to the mjpeg output
-	//flush_pre_buffer_to_mjpeg();
+    // Temporarily set MJPEG options
+    options_->Set().output = mjpeg_output_filename_;
+    options_->Set().codec = "mjpeg";
 
-    LOG(1, "Started MJPEG file output at: " << mjpeg_opts_->Get().output);
+    // Create the MJPEG file output
+    mjpeg_output.reset(Output::Create(options_));
+
+    // Restore original options
+    options_->Set().output = original_output;
+    options_->Set().codec = original_codec;
+
+    LOG(1, "Started MJPEG file output at: " << mjpeg_output_filename_);
 }
 
 void Output::flush_pre_buffer_to_mjpeg(int64_t cutoff_ts)
@@ -465,27 +460,33 @@ void Output::flush_pre_buffer_to_mjpeg(int64_t cutoff_ts)
 void Output::outputJpg(void *mem, size_t size, int64_t timestamp_us, bool keyframe)
 {
 	// TODO should this be running on a seperate thread to prevent slowing down the stream?
-	std::unique_ptr<VideoOptions> jpeg_opts_ = std::make_unique<VideoOptions>();
 	
-	// Copy essential settings from mjpeg_opts_
-	jpeg_opts_->Set().codec = "mjpeg";
-	jpeg_opts_->Set().quality = mjpeg_opts_->Get().quality;
-	jpeg_opts_->Set().width = mjpeg_opts_->Get().width;
-	jpeg_opts_->Set().height = mjpeg_opts_->Get().height;
-	
+	// Generate JPEG filename from MJPEG filename
+	std::string jpeg_filename = mjpeg_output_filename_;
 	std::string newExtension = ".jpg";
 	// Find the last occurrence of '.'
-    size_t dotPos = mjpeg_opts_->Get().output.find_last_of('.');
+    size_t dotPos = jpeg_filename.find_last_of('.');
 
     if (dotPos != std::string::npos) {
         // Replace the extension: keep everything before the dot and append the new extension
-        jpeg_opts_->Set().output = mjpeg_opts_->Get().output.substr(0, dotPos) + newExtension;
+        jpeg_filename = jpeg_filename.substr(0, dotPos) + newExtension;
     }
 	
-	LOG(1, "Creating thumbnail:" << jpeg_opts_->Get().output);
-    jpeg_output.reset(Output::Create(jpeg_opts_.get()));
+	LOG(1, "Creating thumbnail:" << jpeg_filename);
+	
+	// Save original options
+	std::string original_output = options_->Get().output;
+	
+	// Temporarily set JPEG output filename
+	options_->Set().output = jpeg_filename;
+	
+	// Create JPEG output
+    jpeg_output.reset(Output::Create(options_));
 	jpeg_output->OutputReady(mem, size, timestamp_us, keyframe);
 	jpeg_output.reset();
+	
+	// Restore original options
+	options_->Set().output = original_output;
 }
 
 void Output::stopMjpegRecording()
@@ -500,8 +501,8 @@ void Output::stopMjpegRecording()
 
     // Make a local copy of the raw filename, then clear our member.
     // This ensures if we start a new recording soon, we won't overwrite it.
-    std::string rawFile = mjpeg_opts_->Get().output;
-    mjpeg_opts_->Set().output.clear();
+    std::string rawFile = mjpeg_output_filename_;
+    mjpeg_output_filename_.clear();
 
     // 2) Construct a final container filename
     //    Example: replace ".mjpeg" with ".mp4" or ".avi"
