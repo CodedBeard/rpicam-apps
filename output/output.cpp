@@ -47,14 +47,14 @@ Output::Output(VideoOptions const *options)
 			start_metadata_output(buf_metadata_, options_->Get().metadata_format);
 		}
 	}
-	if (!options->webhook_url.empty())
+	if (!options->.Get().webhook_url.empty())
 	{
-		webhook_url = options->webhook_url;
+		webhook_url = options->.Get().webhook_url;
 	}
 
 	enable_ = !options->Get().pause;
 	max_pre_frames = static_cast<size_t>(
-		std::ceil(options_->pre_detection_secs * options_->framerate.value())
+		std::ceil(options_->.Get().pre_detection_secs * options_->.Get().framerate.value())
 	);
 
 }

@@ -327,6 +327,7 @@ struct OptsInternal
 	unsigned int detection_record_secs;
 	std::string detection_record_path;
 	float confidence;
+	unsigned int pre_detection_secs;
 
 };
 

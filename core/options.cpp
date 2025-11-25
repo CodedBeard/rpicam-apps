@@ -815,6 +815,7 @@ void OptsInternal::PrintVideo() const
 	std::cerr << "    object: " << object << std::endl;
 	std::cerr << "    gap: " << gap << std::endl;
 	std::cerr << "    confidence: " << confidence << std::endl;
+	std::cerr << "    pre-detection-secs: " << pre_detection_secs << std::endl;
 	std::cerr << "    detection-record-secs: " << detection_record_secs << std::endl;
 	std::cerr << "    detection-record-path: " << detection_record_path << std::endl;
 	std::cerr << "    bitrate: " << bitrate.kbps() << "kbps" << std::endl;
