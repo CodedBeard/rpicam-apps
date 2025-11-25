@@ -61,7 +61,8 @@ struct VideoOptions : public Options
 			("pre-detection-secs", value<unsigned int>(&v_->pre_detection_secs)->default_value(30), "seconds of recording to buffer from before a detection")	
 			("webhook-url", value<std::string>(&v_->webhook_url), "webhook endpoint to call")
 			("confidence", value<float>(&v_->confidence)->default_value(0.65), "Confidence in detection matches object")	
-			("detection_record_secs", value<unsigned int>(&v_->detection_record_secs)->default_value(30), "number of seconds of frames to record when a detection is made")	
+			("detection-record-secs", value<unsigned int>(&v_->detection_record_secs)->default_value(30), "number of seconds of frames to record when a detection is made")	
+			("detection-record-path", value<std::string>(&v_->detection_record_path)->default_value("~"), "path where detection recordings should be saved")	
 			("libav-video-codec", value<std::string>(&v_->libav_video_codec)->default_value("h264_v4l2m2m"),
 			 "Sets the libav video codec to use. "
 			 "To list available codecs, run  the \"ffmpeg -codecs\" command.")
