@@ -12,7 +12,7 @@
 class FileOutput : public Output
 {
 public:
-	FileOutput(VideoOptions const *options);
+	FileOutput(VideoOptions const *options, const std::string& filename_override = "");
 	~FileOutput();
 
 protected:
@@ -24,4 +24,5 @@ private:
 	FILE *fp_;
 	unsigned int count_;
 	int64_t file_start_time_ms_;
+	std::string filename_override_;
 };

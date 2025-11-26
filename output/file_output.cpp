@@ -8,8 +8,8 @@
 #include "file_output.hpp"
 #include "core/options.hpp"
 
-FileOutput::FileOutput(VideoOptions const *options)
-	: Output(options), fp_(nullptr), count_(0), file_start_time_ms_(0)
+FileOutput::FileOutput(VideoOptions const *options, const std::string& filename_override)
+	: Output(options), fp_(nullptr), count_(0), file_start_time_ms_(0), filename_override_(filename_override)
 {
 }
 
@@ -44,13 +44,16 @@ void FileOutput::outputBuffer(void *mem, size_t size, int64_t timestamp_us, uint
 
 void FileOutput::openFile(int64_t timestamp_us)
 {
-	if (options_->Get().output == "-")
+	// Use filename_override_ if provided, otherwise use options_->Get().output
+	std::string output_path = filename_override_.empty() ? options_->Get().output : filename_override_;
+	
+	if (output_path == "-")
 		fp_ = stdout;
-	else if (!options_->Get().output.empty())
+	else if (!output_path.empty())
 	{
 		// Generate the next output file name.
 		char filename[256];
-		int n = snprintf(filename, sizeof(filename), options_->Get().output.c_str(), count_);
+		int n = snprintf(filename, sizeof(filename), output_path.c_str(), count_);
 		count_++;
 		if (options_->Get().wrap)
 			count_ = count_ % options_->Get().wrap;

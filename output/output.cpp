@@ -87,7 +87,6 @@ void Output::NotifyDetection(int sequence_id)
 		record_start_timestamp = now_us;
 		record_end_timestamp = now_us + static_cast<int64_t>(options_->Get().detection_record_secs * 1'000'000);
 		startMjpegRecording(now_us);
-		pending_flush_ = true;
 		first_frame = true;
 	}
 	else
@@ -103,12 +102,6 @@ void Output::NotifyDetection(int sequence_id)
 
 void Output::OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyframe)
 {
-	// if a detection just armed the recorder, flush the buffer
-	if (pending_flush_ && isMjpegRecording()) {
-		flush_pre_buffer_to_mjpeg(timestamp_us);
-		pending_flush_ = false;
-	}
-
 	if (max_pre_frames)
 	{
 		Frame f;
@@ -122,6 +115,14 @@ void Output::OutputReady(void *mem, size_t size, int64_t timestamp_us, bool keyf
 		}
 	}
 
+
+	// If we have a pending flush, do it now (once we have the next frame)
+	if (pending_flush_)
+	{
+		// Flush all frames OLDER than the detection timestamp
+		flush_pre_buffer_to_mjpeg(timestamp_us);
+		pending_flush_ = false;
+	}
 
 	// When output is enabled, we may have to wait for the next keyframe.
 	uint32_t flags = keyframe ? FLAG_KEYFRAME : FLAG_NONE;
@@ -417,20 +418,13 @@ void Output::startMjpegRecording(int64_t first_detection_timestamp)
     // Combine them: "basePath/isoName"
     mjpeg_output_filename_ = subFolderPath + "/" + isoName;
 
-    // Save original options values
-    std::string original_output = options_->Get().output;
-    std::string original_codec = options_->Get().codec;
+    // Create the MJPEG file output with explicit filename override
+    // No need to modify options at all!
+    mjpeg_output.reset(new FileOutput(options_, mjpeg_output_filename_));
 
-    // Temporarily set MJPEG options
-    options_->Set().output = mjpeg_output_filename_;
-    options_->Set().codec = "mjpeg";
-
-    // Create the MJPEG file output
-    mjpeg_output.reset(Output::Create(options_));
-
-    // Restore original options
-    options_->Set().output = original_output;
-    options_->Set().codec = original_codec;
+    // Set pending_flush_ flag - the flush will happen on the NEXT frame
+    // This ensures we only flush frames OLDER than the detection timestamp
+    pending_flush_ = true;
 
     LOG(1, "Started MJPEG file output at: " << mjpeg_output_filename_);
 }
@@ -440,20 +434,20 @@ void Output::flush_pre_buffer_to_mjpeg(int64_t cutoff_ts)
 	if(!isMjpegRecording() || pre_buffer_.empty())
 		return;
 
-	// for (auto &f : pre_buffer_) {
-	// 	mjpeg_output->OutputReady(f.bytes.data(), f.bytes.size(), f.ts - time_offset_, f.keyframe);
-	// }
+	LOG(1, "Flushing pre-buffer frames older than timestamp " << cutoff_ts);
 
+	// Flush only frames OLDER than cutoff_ts (the detection timestamp)
+	// This prevents duplicate frames in the output
 	for (auto it = pre_buffer_.begin(); it != pre_buffer_.end(); ++it) {
 		if (it->ts >= cutoff_ts) {
+			// Stop when we reach frames that are newer than or equal to detection time
 			break;
 		}
-
-
-	 	mjpeg_output->OutputReady(it->bytes.data(), it->bytes.size(), it->ts - time_offset_, it->keyframe);
+		// Write the frame with adjusted timestamp
+		mjpeg_output->OutputReady(it->bytes.data(), it->bytes.size(), it->ts - time_offset_, it->keyframe);
 	}
 
-	pre_buffer_.clear();
+	LOG(1, "Pre-buffer flush complete");
 }
 
 
@@ -474,19 +468,10 @@ void Output::outputJpg(void *mem, size_t size, int64_t timestamp_us, bool keyfra
 	
 	LOG(1, "Creating thumbnail:" << jpeg_filename);
 	
-	// Save original options
-	std::string original_output = options_->Get().output;
-	
-	// Temporarily set JPEG output filename
-	options_->Set().output = jpeg_filename;
-	
-	// Create JPEG output
-    jpeg_output.reset(Output::Create(options_));
+	// Create JPEG output with explicit filename override - no need to modify options!
+	jpeg_output.reset(new FileOutput(options_, jpeg_filename));
 	jpeg_output->OutputReady(mem, size, timestamp_us, keyframe);
 	jpeg_output.reset();
-	
-	// Restore original options
-	options_->Set().output = original_output;
 }
 
 void Output::stopMjpegRecording()

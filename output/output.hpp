@@ -74,6 +74,7 @@ private:
 	std::string webhook_url;
 	std::string mjpeg_output_filename_;
 	bool first_frame = false;
+	bool pending_flush_ = false;
 
 	struct Frame
 	{
@@ -85,7 +86,6 @@ private:
 	// Rolling buffer that keeps the last N frames
 	std::deque<Frame> pre_buffer_;
 	size_t max_pre_frames = 0;
-	bool pending_flush_ = false;
 
 	void flush_pre_buffer_to_mjpeg(int64_t cutoff_ts);
 };
